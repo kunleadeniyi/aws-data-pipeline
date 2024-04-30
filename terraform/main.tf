@@ -12,6 +12,13 @@ provider "aws" {
   region = "us-east-1"
 }
 
+terraform {
+  backend "s3" {
+    bucket = "mytfbackend-3695"
+    region = "eu-west-2"
+    key = "key/terraform.tfstate"
+  }
+}
 # resource "aws_s3_bucket" "S3-storage-bucket" {
 #   bucket = "my-tf-test-bucket-20240212"
 # }

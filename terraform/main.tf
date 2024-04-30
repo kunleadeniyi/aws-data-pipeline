@@ -9,14 +9,14 @@ terraform {
 
 # Configure the AWS Provider
 provider "aws" {
-  region = "us-east-1"
+  #region = "us-east-1"
 }
 
 terraform {
   backend "s3" {
     bucket = "mytfbackend-3695"
     region = "eu-west-2"
-    key = "key/terraform.tfstate"
+    key    = "key/terraform.tfstate"
   }
 }
 # resource "aws_s3_bucket" "S3-storage-bucket" {
@@ -190,96 +190,102 @@ terraform {
 
 # workflow
 # Api to kinesis stream to kinesis firehose to s3 to glue crawler to glue job to redshift
-resource "aws_kinesis_stream" "kinesis_data_stream" {
-  name             = "my-data-stream"
-  # only set shard_count when in PROVISIONED stream mode
-  # shard_count      = 1  # You can adjust shard count based on expected throughput 
-  retention_period = 24
 
-  # there is a charge for enhanced shard-level metrics
-  # https://docs.aws.amazon.com/streams/latest/dev/monitoring-with-cloudwatch.html
-  shard_level_metrics = [ 
-    "IncomingBytes",
-    "IncomingRecords",
-    "OutgoingBytes",
-    "OutgoingRecords"
-  ]
+# start uncommenting here, and indent backwards
+##########################################################################################################
+# resource "aws_kinesis_stream" "kinesis_data_stream" {
+#   name             = "my-data-stream"
+#   # only set shard_count when in PROVISIONED stream mode
+#   # shard_count      = 1  # You can adjust shard count based on expected throughput 
+#   retention_period = 24
 
-  stream_mode_details {
-    stream_mode = "ON_DEMAND"
-  }
+#   # there is a charge for enhanced shard-level metrics
+#   # https://docs.aws.amazon.com/streams/latest/dev/monitoring-with-cloudwatch.html
+#   shard_level_metrics = [ 
+#     "IncomingBytes",
+#     "IncomingRecords",
+#     "OutgoingBytes",
+#     "OutgoingRecords"
+#   ]
 
-  tags = {
-    Environment = "test"
-  }
-}
+#   stream_mode_details {
+#     stream_mode = "ON_DEMAND"
+#   }
 
-resource "aws_kinesis_firehose_delivery_stream" "data_firehose" {
-  name = "firehose_delivery"
-  destination = "extended_s3"
+#   tags = {
+#     Environment = "test"
+#   }
+# }
 
-  kinesis_source_configuration {
-    kinesis_stream_arn = aws_kinesis_stream.kinesis_data_stream.arn
-    role_arn = aws_iam_role.firehose_role.arn
-  }
-  
-  extended_s3_configuration {
-    # role_arn = 
-    # bucket_arn = 
-    role_arn       = aws_iam_role.firehose_role.arn
-    bucket_arn     = aws_s3_bucket.data-s3-storage-bucket.arn
-    buffering_interval = 60
-    buffering_size = 64
-    dynamic_partitioning_configuration {
-      enabled = true
-    }
+# resource "aws_kinesis_firehose_delivery_stream" "data_firehose" {
+#   name = "firehose_delivery"
+#   destination = "extended_s3"
 
-    # Example prefix using partitionKeyFromQuery, applicable to JQ processor
-    prefix              = "data/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/!{partitionKeyFromQuery:table_name}/"
-    error_output_prefix = "errors/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/!{firehose:error-output-type}/"
+#   kinesis_source_configuration {
+#     kinesis_stream_arn = aws_kinesis_stream.kinesis_data_stream.arn
+#     role_arn = aws_iam_role.firehose_role.arn
+#   }
 
-  processing_configuration {
-      enabled = "true"
-      # JQ processor example
-      processors {
-        type = "MetadataExtraction"
-        parameters {
-          parameter_name  = "JsonParsingEngine"
-          parameter_value = "JQ-1.6"
-        }
-        parameters {
-          parameter_name  = "MetadataExtractionQuery"
-          parameter_value = "{table_name:.table_name}"
-        }
-      }
-    }
-  }
-  tags = {
-    Environment = "test"
-  }
-}
+#   extended_s3_configuration {
+#     # role_arn = 
+#     # bucket_arn = 
+#     role_arn       = aws_iam_role.firehose_role.arn
+#     bucket_arn     = aws_s3_bucket.data-s3-storage-bucket.arn
+#     buffering_interval = 60
+#     buffering_size = 64
+#     dynamic_partitioning_configuration {
+#       enabled = true
+#     }
 
-resource "aws_s3_bucket" "data-s3-storage-bucket" {
-  bucket = "data-bucket-20240212"
-}
+#     # Example prefix using partitionKeyFromQuery, applicable to JQ processor
+#     prefix              = "data/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/!{partitionKeyFromQuery:table_name}/"
+#     error_output_prefix = "errors/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/!{firehose:error-output-type}/"
 
-resource "aws_iam_role" "firehose_role" {
-  name               = "firehose_role"
-  assume_role_policy = data.aws_iam_policy_document.firehose_assume_role.json
-}
+#   processing_configuration {
+#       enabled = "true"
+#       # JQ processor example
+#       processors {
+#         type = "MetadataExtraction"
+#         parameters {
+#           parameter_name  = "JsonParsingEngine"
+#           parameter_value = "JQ-1.6"
+#         }
+#         parameters {
+#           parameter_name  = "MetadataExtractionQuery"
+#           parameter_value = "{table_name:.table_name}"
+#         }
+#       }
+#     }
+#   }
+#   tags = {
+#     Environment = "test"
+#   }
+# }
 
-data "aws_iam_policy_document" "firehose_assume_role" {
-  statement {
-    effect = "Allow"
+# resource "aws_s3_bucket" "data-s3-storage-bucket" {
+#   bucket = "data-bucket-20240212"
+# }
 
-    principals {
-      type        = "Service"
-      identifiers = ["firehose.amazonaws.com", "kinesis.amazonaws.com"]
-    }
+# resource "aws_iam_role" "firehose_role" {
+#   name               = "firehose_role"
+#   assume_role_policy = data.aws_iam_policy_document.firehose_assume_role.json
+# }
 
-    actions = ["sts:AssumeRole"]
-  }
-}
+# data "aws_iam_policy_document" "firehose_assume_role" {
+#   statement {
+#     effect = "Allow"
+
+#     principals {
+#       type        = "Service"
+#       identifiers = ["firehose.amazonaws.com", "kinesis.amazonaws.com"]
+#     }
+
+#     actions = ["sts:AssumeRole"]
+#   }
+# }
+
+# stop uncommenting here
+##########################################################################################################
 
 # resource "aws_iam_role" "firehose_kinesis_role" {
 #   name               = "firehose_kinesis_role"

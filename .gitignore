@@ -1,0 +1,5 @@
+terraform/.terraform/
+terraform/.terraform*
+terraform/set_env.sh
+terraform/*.tfstate*
+workspace.code-workspace

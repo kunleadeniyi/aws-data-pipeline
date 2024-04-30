@@ -18,20 +18,20 @@ resource "aws_iam_user" "admin_users" {
 
 ########################################################
 # conditional expressions
-variable "is_test" {
-  type    = bool
-  default = true
-}
+# variable "is_test" {
+#   type    = bool
+#   default = true
+# }
 
-resource "aws_instance" "dev" {
-  ami           = var.ec2_instance_eu_west_2_ami #"ami-00e3eeef0a0a0a117"
-  instance_type = "t2.micro"
-  count         = var.is_test == true ? 1 : 0
+# resource "aws_instance" "dev" {
+#   ami           = var.ec2_instance_eu_west_2_ami #"ami-00e3eeef0a0a0a117"
+#   instance_type = "t2.micro"
+#   count         = var.is_test == true ? 1 : 0
 
-  tags = {
-    "team" = "dev"
-  }
-}
+#   tags = {
+#     "team" = "dev"
+#   }
+# }
 
 # resource "aws_instance" "prod" {
 #   ami           = var.ec2_instance_eu_west_2_ami
@@ -57,14 +57,36 @@ output "file_output" {
   value = data.local_file.gitignore.content
 }
 
+## aws_instance fro single instance and aws_instances for multilpe instances
+# data "aws_instances" "ec2-data" {
+#   filter {
+#     name   = "tag:team"
+#     values = ["dev"]
+#   }
+# }
 
-data "aws_instances" "ec2-data" {
+# output "ec2-data-output" {
+#   value = data.aws_instances.ec2-data
+# }
+
+##############################################################
+### get laterst ami and use it to create ec2
+data "aws_ami" "london_ubuntu_ami_id" {
+  owners      = ["amazon"]
+  most_recent = true
+
   filter {
-    name   = "tag:team"
-    values = ["dev"]
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy*"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
   }
 }
 
-output "ec2-data-output" {
-  value = data.aws_instances.ec2-data
+resource "aws_instance" "latest_ubuntu" {
+  ami           = data.aws_ami.london_ubuntu_ami_id.id
+  instance_type = "t2.micro"
 }
